@@ -2,6 +2,7 @@
 using Domain;
 using System.Text;
 using Telegram.Bot;
+using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 
 class Program
@@ -34,11 +35,11 @@ class Program
 
                 if (update.Message == null)
                     continue;
-                if (update.Message.Text == null)
-                    continue;
+                //if (update.Message.Text == null)
+                //    continue;
                 if (update.Message.From == null)
                     continue;
-                var text = update.Message.Text;
+                var text = update.Message.Text == null ? "" : update.Message.Text;
                 var from = update.Message.From;
                 var chatId = update.Message.Chat.Id;
                 if (from.Username != "arashaf1997")
@@ -167,16 +168,57 @@ class Program
                         }
                         else if (step == 2)
                         {
+
                             Product product = productsToAdd[from.Username];
                             product.Description = text;
-                            bot.SendTextMessageAsync(chatId: chatId, text: "محصول با موفقیت به کانال اضافه شد", replyMarkup: mainKeyboardMarkup);
-                            //addProductSteps[from.Username] = 3;
-                            addProductSteps.Remove(from.Username);
-                            productsToAdd.Remove(from.Username);
+                            KeyboardButton[] row1 =
+      {
+                 new KeyboardButton ("مرحله بعد " + "\U00002714")
+            };
+                            KeyboardButton[][] keyboardButtons =
+                            {
+                row1
+            };
+                            mainKeyboardMarkup = new ReplyKeyboardMarkup(keyboardButtons);
+                            bot.SendTextMessageAsync(chatId: chatId, text: "عکس محصول را ارسال کنید", replyMarkup: mainKeyboardMarkup);
+                            addProductSteps[from.Username] = 3;
                             product.InsertTime = DateTime.Now;
                             product.UserId = 1;
                             context.Products.Add(product);
+                            productsToAdd[from.Username] = product;
                             context.SaveChanges();
+                        }
+                        else if (step == 3)
+                        {
+                            if (text.Contains("مرحله بعد"))
+                            {
+                                addProductSteps[from.Username] = 3;
+                                bot.SendTextMessageAsync(chatId: chatId, text: "محصول با موفقیت به کانال اضافه شد", replyMarkup: mainKeyboardMarkup);
+
+                                var query = context.ProductImages.Where(p => p.ProductId == productsToAdd[from.Username].Id);
+                                var productImages = query.ToArray();
+                                IAlbumInputMedia[] streamArray = new IAlbumInputMedia[productImages.Count()];
+
+                                for (int i = 0; i < productImages.Count(); i++)
+                                {
+                                    streamArray[i] = new InputMediaPhoto(new InputMedia(productImages[i].ImageId.ToString()));
+                                }
+                                bot.SendMediaGroupAsync(chatId, streamArray);
+
+                                addProductSteps.Remove(from.Username);
+                                productsToAdd.Remove(from.Username);
+                            }
+                            else
+                            {
+                                ProductImage productImage = new ProductImage();
+                                productImage.ImageId = update.Message.Photo[0].FileId;
+                                productImage.ProductId = productsToAdd[from.Username].Id;
+                                productImage.InsertTime = DateTime.Now;
+                                context.ProductImages.Add(productImage);
+                                context.SaveChanges();
+                                bot.SendTextMessageAsync(chatId: chatId, text: "عکس بعدی محصول را ارسال کنید در غیر اینصورت دکمه مرحله بعد را لمس کنید.", replyMarkup: mainKeyboardMarkup);
+                            }
+
                         }
                     }
                 }
