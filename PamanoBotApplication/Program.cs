@@ -24,6 +24,7 @@ class Program
         Dictionary<string, Product> productsToAdd = new Dictionary<string, Product>();
         Dictionary<string, int> orderProductSteps = new Dictionary<string, int>();
         Dictionary<string, Product> productsToOrder = new Dictionary<string, Product>();
+        Dictionary<string, Order> orders = new Dictionary<string, Order>();
         Dictionary<string, int> addUserSteps = new Dictionary<string, int>();
         Dictionary<string, Domain.User> usersToAdd = new Dictionary<string, Domain.User>();
 
@@ -54,20 +55,26 @@ class Program
                         {
                             usersToAdd[from.Username].FullName = text;
                             addUserSteps[from.Username] = 2;
-                            bot.SendTextMessageAsync(chatId: chatId, text: "لطفا شماره تماس خود را ارسال کنید.");
+                            bot.SendTextMessageAsync(chatId: chatId, text: "لطفا نام فروشگاه خود را ارسال کنید.");
                             break;
                         }
-                        else if (addUserSteps[from.Username] == 2)
+                        if (addUserSteps[from.Username] == 2)
                         {
-                            usersToAdd[from.Username].PhoneNumber = text;
+                            usersToAdd[from.Username].StoreName = text;
                             addUserSteps[from.Username] = 3;
-                            bot.SendTextMessageAsync(chatId: chatId, text: "لطفا آدرس خود را ارسال کنید.");
+                            bot.SendTextMessageAsync(chatId: chatId, text: "لطفا شماره تماس خود را ارسال کنید.");
                             break;
                         }
                         else if (addUserSteps[from.Username] == 3)
                         {
+                            usersToAdd[from.Username].PhoneNumber = text;
+                            addUserSteps[from.Username] = 4;
+                            bot.SendTextMessageAsync(chatId: chatId, text: "لطفا آدرس خود را ارسال کنید.");
+                            break;
+                        }
+                        else if (addUserSteps[from.Username] == 4)
+                        {
                             usersToAdd[from.Username].Address = text;
-                            addUserSteps[from.Username] = 3;
                             bot.SendTextMessageAsync(chatId: chatId, text: $"{usersToAdd[from.Username].FullName} عزیز ،" + "ثبت نام شما با موفقیت انجام شد.");
                             usersToAdd[from.Username].InsertTime = DateTime.Now;
                             context.Users.Add(usersToAdd[from.Username]);
@@ -83,15 +90,130 @@ class Program
                         {
                             var productId = productsToOrder[from.Username].Id;
                             var productImage = context.ProductImages.Where(p => p.ProductId.Equals(productId)).FirstOrDefault();
+                            var colors = productsToOrder[from.Username].Colors.Split(',');
+                            List<List<KeyboardButton>> buttons = new List<List<KeyboardButton>>();
+                            for (int i = 0; i < colors.Count(); i++)
+                            {
+                                List<KeyboardButton> row = new List<KeyboardButton>();
+                                row.Add(new KeyboardButton(colors[i] + "\U00002714"));
+                                buttons.Add(row);
+                            }
+                            ReplyKeyboardMarkup keyboard = new ReplyKeyboardMarkup(buttons);
                             bot.SendTextMessageAsync(chatId: chatId, text: "شما این محصول را جهت سفارش انتخاب کرده اید :");
                             bot.SendPhotoAsync(chatId: chatId,
                                 photo: new Telegram.Bot.Types.InputFiles.InputOnlineFile(productImage.ImageId),
                                 caption:
-                                $"نام محصول : {productsToOrder[from.Username].Name} \n" +
+                                $"{productsToOrder[from.Username].Name} \n" +
                                 $"سایزبندی : {productsToOrder[from.Username].Size}\n" +
                                 $"رنگ های موجود : {productsToOrder[from.Username].Colors}\n" +
                                 $"توضیحات : {productsToOrder[from.Username].Description}\n" +
                                 $"قیمت : {productsToOrder[from.Username].Price} تومان");
+                            bot.SendTextMessageAsync(chatId: chatId, text: "رنگ مورد نظر برای سفارش را انتخاب کنید :", replyMarkup: keyboard);
+                            orderProductSteps[from.Username] = 2;
+                            orders.Add(from.Username, new Order { ProductId = productId, TotalCount = 0 });
+                        }
+                        if (orderProductSteps[from.Username] == 2)
+                        {
+                            if (productsToOrder[from.Username].Colors.Contains(text))
+                            {
+                                orders[from.Username].Details = orders[from.Username].Details + $"رنگ {text} ";
+                                bot.SendTextMessageAsync(chatId: chatId, text: $"تعداد سری از رنگ {text} را وارد کنید :");
+                                orderProductSteps[from.Username] = 3;
+                            }
+                        }
+                    }
+                    if (orderProductSteps[from.Username] == 3)
+                    {
+                        List<List<KeyboardButton>> buttons = new List<List<KeyboardButton>>();
+                        List<KeyboardButton> row1 = new List<KeyboardButton>();
+                        row1.Add(new KeyboardButton("بله " + "\U00002714"));
+                        row1.Add(new KeyboardButton("خیر " + "\U00002714"));
+                        buttons.Add(row1);
+                        ReplyKeyboardMarkup keyboard = new ReplyKeyboardMarkup(buttons);
+                        orders[from.Username].TotalCount = +Convert.ToInt32(text);
+                        orders[from.Username].Details = orders[from.Username].Details + $"تعداد {text} سری \n";
+                        bot.SendTextMessageAsync(chatId: chatId, text: $"{orders[from.Username].Details} ثبت شد. \n" +
+                            $"آیا میخواهید رنگ دیگری از محصول را سفارش دهید؟", replyMarkup: keyboard);
+                        orderProductSteps[from.Username] = 4;
+                    }
+                    if (orderProductSteps[from.Username] == 4)
+                    {
+                        if (text.Contains("بله"))
+                        {
+                            var colors = productsToOrder[from.Username].Colors.Split(',');
+                            List<List<KeyboardButton>> buttons = new List<List<KeyboardButton>>();
+                            for (int i = 0; i < colors.Count(); i++)
+                            {
+                                List<KeyboardButton> row = new List<KeyboardButton>();
+                                row.Add(new KeyboardButton(colors[i] + "\U00002714"));
+                                buttons.Add(row);
+                            }
+                            ReplyKeyboardMarkup keyboard = new ReplyKeyboardMarkup(buttons);
+                            bot.SendTextMessageAsync(chatId: chatId, text: "رنگ مورد نظر برای سفارش را انتخاب کنید :", replyMarkup: keyboard);
+                            orderProductSteps[from.Username] = 2;
+                        }
+                        else if (text.Contains("خیر"))
+                        {
+                            List<List<KeyboardButton>> buttons = new List<List<KeyboardButton>>();
+                            List<KeyboardButton> row1 = new List<KeyboardButton>();
+                            row1.Add(new KeyboardButton("تایید سفارش " + "\U00002714"));
+                            row1.Add(new KeyboardButton("لغو سفارش " + "\U00002714"));
+                            buttons.Add(row1);
+                            ReplyKeyboardMarkup keyboard = new ReplyKeyboardMarkup(buttons);
+                            bot.SendTextMessageAsync(chatId: chatId, text: $"سفارش شما : {productsToOrder[from.Username].Name} \n" +
+                                $"جزئیات سفارش : {orders[from.Username].Details}\n" +
+                                $"قیمت هر جفت : {productsToOrder[from.Username].Price} تومان \n" +
+                                $"قیمت کلی : {productsToOrder[from.Username].Price * orders[from.Username].TotalCount} تومان \n" +
+                                $"در صورت لزوم میتوانید برای ما توضیحاتی در مورد سفارش خود ارسال کنید در غیر اینصورت یک گزینه را انتخاب کنید." 
+                                , replyMarkup: keyboard);
+                            orderProductSteps[from.Username] = 5;
+                        }
+                    }
+                    if (orderProductSteps[from.Username] == 5)
+                    {
+                        if (text.Contains("تایید سفارش"))
+                        {
+                            var userName = from.Username;
+                            var user = context.Users.FirstOrDefault(u => u.UserName.Equals(userName));
+                            orders[from.Username].TotalPrice = productsToOrder[from.Username].Price * orders[from.Username].TotalCount;
+                            orders[from.Username].InsertTime = DateTime.Now;
+                            orders[from.Username].UserId = user.Id;
+                            context.Orders.Add(orders[from.Username]);
+                            context.SaveChanges();
+                            orders.Remove(from.Username);
+                            bot.SendTextMessageAsync(chatId: chatId, text: "سفارش شما با موفقیت ثبت شد. تیم پشتیبانی با شما در ارتباط خواهد بود. با تشکر");
+                            bot.SendTextMessageAsync(chatId: "@PamanoShoes", text: $"یک سفارش جدید توسط {user.FullName} ثبت شد.\n" +
+                                $"محصول : {productsToOrder[from.Username].Name}\n" +
+                                $"جزئیات : {orders[from.Username].Details}\n" +
+                                $"تاریخ ثبت : {orders[from.Username].InsertTime}\n" +
+                                $"توضیحات سفارش : {orders[from.Username].CustomerDescription}\n" +
+                                $"نام فروشگاه : {user.StoreName}\n" +
+                                $"شماره تماس : {user.PhoneNumber}\n" +
+                                $"آدرس : {user.Address}");
+                            orderProductSteps.Remove(from.Username);
+                            productsToOrder.Remove(from.Username);
+                        }
+                        else if (text.Contains("لغو سفارش"))
+                        {
+                            bot.SendTextMessageAsync(chatId: chatId, text: "سفارش شما لغو شد. جهت سفارش محصول جدید به کانال پامانو مراجعه کنید.");
+                            orders.Remove(from.Username);
+                            orderProductSteps.Remove(from.Username);
+                            productsToOrder.Remove(from.Username);
+                        }
+                        else
+                        {
+                            var userName = from.Username;
+                            var user = context.Users.FirstOrDefault(u => u.UserName.Equals(userName));
+                            orders[from.Username].CustomerDescription = text;
+                            orders[from.Username].TotalPrice = productsToOrder[from.Username].Price * orders[from.Username].TotalCount;
+                            orders[from.Username].InsertTime = DateTime.Now;
+                            orders[from.Username].UserId = user.Id;
+                            context.Orders.Add(orders[from.Username]);
+                            context.SaveChanges();
+                            orders.Remove(from.Username);
+                            orderProductSteps.Remove(from.Username);
+                            productsToOrder.Remove(from.Username);
+                            bot.SendTextMessageAsync(chatId: chatId, text: "سفارش شما با موفقیت ثبت شد. تیم پشتیبانی با شما در ارتباط خواهد بود. با تشکر");
                         }
                     }
 
@@ -105,9 +227,9 @@ class Program
 
                             if (!context.Users.Any(u => u.UserName.Equals(from.Username)))
                             {
-                                usersToAdd.Add(from.Username , new Domain.User() { UserName = from.Username}) ;
+                                usersToAdd.Add(from.Username, new Domain.User() { UserName = from.Username });
                                 addUserSteps[from.Username] = 1;
-                                bot.SendTextMessageAsync(chatId: chatId, text: "جهت ثبت سفارش لطفا با گذراندن سه مرحله در ربات پامانو ثبت نام کنید." +
+                                bot.SendTextMessageAsync(chatId: chatId, text: "جهت ثبت سفارش لطفا با گذراندن سه مرحله در ربات پامانو ثبت نام کنید. \n" +
                                     "لطفا نام و نام خانوادگی خود را ارسال کنید.");
                                 break;
                             }
