@@ -16,11 +16,11 @@ namespace Domain
         public string CustomerDescription { get; set; }
 
         [ForeignKey(nameof(User))]
-        public int UserId { get; set; }
+        public int? UserId { get; set; }
         public virtual User User { get; set; }
 
         [ForeignKey(nameof(Product))]
-        public int ProductId { get; set; }
+        public int? ProductId { get; set; }
         public virtual Product Product { get; set; }
     }
 }
