@@ -362,7 +362,7 @@ class Program
 
                                     var productImages = context.ProductImages.Where(p => p.ProductId.Equals(pId)).ToList();
 
-                                    if (productImages.Count >= 1)
+                                    if (productImages.Count > 1)
                                     {
                                         IAlbumInputMedia[] streamArray = new IAlbumInputMedia[productImages.Count()];
                                         for (int i = 0; i < productImages.Count(); i++)
