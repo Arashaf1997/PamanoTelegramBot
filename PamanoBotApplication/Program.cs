@@ -49,7 +49,7 @@ class Program
                     var text = update.Message.Text == null ? "" : update.Message.Text;
                     var from = update.Message.From;
                     var chatId = update.Message.Chat.Id;
-                    if (from.Username != "arashaf199")
+                    if (from.Username != "arashaf1997")
                     {
                         if (usersToAdd.ContainsKey(from.Username))
                         {
@@ -233,9 +233,6 @@ class Program
                                         orders[from.Username].UserId = user.Id;
                                         context.Orders.Add(orders[from.Username]);
                                         context.SaveChanges();
-                                        orders.Remove(from.Username);
-                                        orderProductSteps.Remove(from.Username);
-                                        productsToOrder.Remove(from.Username);
                                         bot.SendTextMessageAsync(chatId: chatId, text: "سفارش شما با موفقیت ثبت شد. تیم پشتیبانی با شما در ارتباط خواهد بود. با تشکر");
                                         bot.SendTextMessageAsync(chatId: "@PamanoShoes", text: $"یک سفارش جدید توسط {user.FullName} ثبت شد.\n" +
                                             $"محصول : {productsToOrder[from.Username].Name}\n" +
@@ -245,6 +242,9 @@ class Program
                                             $"نام فروشگاه : {user.StoreName}\n" +
                                             $"شماره تماس : {user.PhoneNumber}\n" +
                                             $"آدرس : {user.Address}");
+                                        orders.Remove(from.Username);
+                                        orderProductSteps.Remove(from.Username);
+                                        productsToOrder.Remove(from.Username);
                                     }
                                     break;
                             }
@@ -254,17 +254,14 @@ class Program
                     {
                         if (text.ToLower().Contains("/start"))
                         {
-                            KeyboardButton[] row1 =
-              {
-                 new KeyboardButton ("ثبت محصول جدید " + "\U00002714"), new KeyboardButton("دریافت لیست محصولات " + "\U00002714"),new KeyboardButton("درخواست های خرید " + "\U00002714")
-            };
-                            KeyboardButton[][] keyboardButtons =
-                            {
-                row1
-            };
-                            mainKeyboardMarkup = new ReplyKeyboardMarkup(keyboardButtons);
-
-                            bot.SendTextMessageAsync(chatId: chatId, text: "مدیر عزیز خوش آمدید", replyMarkup: mainKeyboardMarkup);
+                            List<List<KeyboardButton>> buttons = new List<List<KeyboardButton>>();
+                            List<KeyboardButton> row = new List<KeyboardButton>();
+                            row.Add(new KeyboardButton("ثبت محصول جدید " + "\U00002714"));
+                            row.Add(new KeyboardButton("دریافت لیست محصولات " + "\U00002714"));
+                            row.Add(new KeyboardButton("درخواست های خرید " + "\U00002714"));
+                            buttons.Add(row);
+                            ReplyKeyboardMarkup keyboard = new ReplyKeyboardMarkup(buttons);
+                            bot.SendTextMessageAsync(chatId: chatId, text: "مدیر عزیز خوش آمدید", replyMarkup: keyboard);
                         }
                         else if (text.ToLower().Contains("ثبت محصول جدید"))
                         {
@@ -304,7 +301,7 @@ class Program
                             {
                                 try
                                 {
-                                    productsToAdd[from.Username].Price = Int32.Parse(text);
+                                    productsToAdd[from.Username].SeriesCount = Int32.Parse(text);
                                 }
                                 catch
                                 {
@@ -343,72 +340,82 @@ class Program
                                 Product product = productsToAdd[from.Username];
                                 product.Description = text;
 
-                                List<List<KeyboardButton>> buttons = new List<List<KeyboardButton>>();
-                                List<KeyboardButton> row1 = new List<KeyboardButton>();
-                                row1.Add(new KeyboardButton("مرحله بعد " + "\U00002714"));
-                                buttons.Add(row1);
-                                ReplyKeyboardMarkup keyboard = new ReplyKeyboardMarkup(buttons);
-
-                                //                      KeyboardButton[] row1 =
-                                //{
-                                //           new KeyboardButton ("مرحله بعد " + "\U00002714")
-                                //      };
-                                //                      KeyboardButton[][] keyboardButtons =
-                                //                      {
-                                //          row1
-                                //      };
-                                //mainKeyboardMarkup = new ReplyKeyboardMarkup(keyboardButtons);
                                 bot.SendTextMessageAsync(chatId: chatId, text: "عکس محصول را ارسال کنید");
-                                addProductSteps[from.Username] = 6;
                                 product.InsertTime = DateTime.Now;
                                 product.UserId = 1;
                                 context.Products.Add(product);
                                 productsToAdd[from.Username] = product;
+                                addProductSteps[from.Username] = 6;
                                 context.SaveChanges();
                             }
                             else if (step == 6)
                             {
-                                var productId = productsToAdd[from.Username].Id;
+                                if (text.Contains("ثبت سفارش"))
+                                {
+                                    var pId = productsToAdd[from.Username].Id;
+                                    bot.SendTextMessageAsync(chatId: chatId, text: "محصول با موفقیت به کانال اضافه شد.");
+                                    List<List<InlineKeyboardButton>> buttons = new List<List<InlineKeyboardButton>>();
+                                    List<InlineKeyboardButton> row1 = new List<InlineKeyboardButton>();
+                                    row1.Add(InlineKeyboardButton.WithUrl("\U00002934" + " سفارش این محصول", $"https://telegram.me/PamanoBot?start={pId}"));
+                                    buttons.Add(row1);
+                                    InlineKeyboardMarkup keyboard = new InlineKeyboardMarkup(buttons);
 
-                                ProductImage productImage = new ProductImage();
-                                productImage.ImageId = update.Message.Photo[0].FileId;
-                                productImage.ProductId = productId;
-                                productImage.InsertTime = DateTime.Now;
-                                context.ProductImages.Add(productImage);
-                                context.SaveChanges();
-                                //bot.SendTextMessageAsync(chatId: chatId, text: "عکس بعدی محصول را ارسال کنید در غیر اینصورت دکمه مرحله بعد را لمس کنید.", replyMarkup: mainKeyboardMarkup);
-                                //addProductSteps[from.Username] = 3;
+                                    var productImages = context.ProductImages.Where(p => p.ProductId.Equals(pId)).ToList();
 
-                                bot.SendTextMessageAsync(chatId: chatId, text: "محصول با موفقیت به کانال اضافه شد");
+                                    if (productImages.Count >= 1)
+                                    {
+                                        IAlbumInputMedia[] streamArray = new IAlbumInputMedia[productImages.Count()];
+                                        for (int i = 0; i < productImages.Count(); i++)
+                                        {
+                                            streamArray[i] = new InputMediaPhoto(new InputMedia(productImages[i].ImageId.ToString()));
+                                        }
+                                        var sended = bot.SendMediaGroupAsync("@PamanoShoes", streamArray);
+                                        bot.SendTextMessageAsync(chatId: "@PamanoShoes", replyToMessageId: sended.Result[0].MessageId,
+                                                text:
+                                                $"نام محصول : {productsToAdd[from.Username].Name} \n" +
+                                                $"سایزبندی : {productsToAdd[from.Username].Size}\n" +
+                                                $"رنگ های موجود : {productsToAdd[from.Username].Colors}\n" +
+                                                $"تعداد جفت در هر سری : {productsToAdd[from.Username].SeriesCount} جفت\n" +
+                                                $"توضیحات : {productsToAdd[from.Username].Description}\n" +
+                                                $"قیمت : {productsToAdd[from.Username].Price} تومان"
+                                                , replyMarkup: keyboard);
+                                    }
+                                    else
+                                    {
+                                        bot.SendPhotoAsync(chatId: "@PamanoShoes",
+                                            photo: new Telegram.Bot.Types.InputFiles.InputOnlineFile(productImages[0].ImageId),
+                                            caption:
+                                            $"نام محصول : {productsToAdd[from.Username].Name} \n" +
+                                            $"سایزبندی : {productsToAdd[from.Username].Size}\n" +
+                                            $"رنگ های موجود : {productsToAdd[from.Username].Colors}\n" +
+                                            $"تعداد جفت در هر سری : {productsToAdd[from.Username].SeriesCount} جفت \n" +
+                                            $"توضیحات : {productsToAdd[from.Username].Description}\n" +
+                                            $"قیمت : {productsToAdd[from.Username].Price} تومان"
+                                            , replyMarkup: keyboard);
+                                    }
 
-                                //var insertedProductImage = context.ProductImages.Where(p => p.ProductId.Equals(productId)).FirstOrDefault();
+                                    addProductSteps.Remove(from.Username);
+                                    productsToAdd.Remove(from.Username);
 
-                                List<List<InlineKeyboardButton>> buttons = new List<List<InlineKeyboardButton>>();
-                                List<InlineKeyboardButton> row1 = new List<InlineKeyboardButton>();
-                                row1.Add(InlineKeyboardButton.WithUrl("\U00002934" + " سفارش این محصول", $"https://telegram.me/PamanoBot?start={productId}"));
-                                buttons.Add(row1);
-                                InlineKeyboardMarkup keyboard = new InlineKeyboardMarkup(buttons);
+                                }
+                                else
+                                {
+                                    var productId = productsToAdd[from.Username].Id;
+                                    ProductImage productImage = new ProductImage();
+                                    productImage.ImageId = update.Message.Photo[0].FileId;
+                                    productImage.ProductId = productId;
+                                    productImage.InsertTime = DateTime.Now;
+                                    context.ProductImages.Add(productImage);
+                                    context.SaveChanges();
 
-                                bot.SendPhotoAsync(chatId: "@PamanoShoes",
-                                    photo: new Telegram.Bot.Types.InputFiles.InputOnlineFile(productImage.ImageId),
-                                    caption:
-                                    $"نام محصول : {productsToAdd[from.Username].Name} \n" +
-                                    $"سایزبندی : {productsToAdd[from.Username].Size}\n" +
-                                    $"رنگ های موجود : {productsToAdd[from.Username].Colors}\n" +
-                                    $"تعداد جفت در هر سری : {productsToAdd[from.Username].SeriesCount} جفت" +
-                                    $"توضیحات : {productsToAdd[from.Username].Description}\n" +
-                                    $"قیمت : {productsToAdd[from.Username].Price} تومان"
-                                    , replyMarkup: keyboard);
+                                    List<List<KeyboardButton>> buttons6 = new List<List<KeyboardButton>>();
+                                    List<KeyboardButton> row6 = new List<KeyboardButton>();
+                                    row6.Add(new KeyboardButton("ثبت سفارش " + "\U00002714"));
+                                    buttons6.Add(row6);
+                                    ReplyKeyboardMarkup keyboard6 = new ReplyKeyboardMarkup(buttons6);
 
-                                addProductSteps.Remove(from.Username);
-                                productsToAdd.Remove(from.Username);
-
-                                //IAlbumInputMedia[] streamArray = new IAlbumInputMedia[productImages.Count()];
-                                //for (int i = 0; i < productImages.Count(); i++)
-                                //{
-                                //    streamArray[i] = new InputMediaPhoto(new InputMedia(productImages[i].ImageId.ToString()));
-                                //}
-                                //bot.SendMediaGroupAsync(chatId, streamArray);
+                                    bot.SendTextMessageAsync(chatId: chatId, text: "عکس بعدی محصول را ارسال کنید در غیر اینصورت دکمه ثبت سفارش را لمس کنید.", replyMarkup: keyboard6);
+                                }
                             }
                         }
                     }
