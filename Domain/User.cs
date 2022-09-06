@@ -9,7 +9,7 @@ namespace Domain
         public User()
         {
         }
-        [Required(ErrorMessage = "Username cant be null.")]
+        public long ChatId { get; set; }
         public string UserName { get; set; }
         public string FullName { get; set; }
         public string StoreName { get; set; }
