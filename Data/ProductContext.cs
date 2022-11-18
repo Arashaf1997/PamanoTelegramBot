@@ -6,7 +6,7 @@ namespace Data
 {
     public class ProductContext : DbContext
     {
-        public ProductContext() : base("Data Source=(local)\\SQLexpress;Initial Catalog=Pamano;Integrated Security=True")
+        public ProductContext() : base("Data Source=SQL8001.site4now.net;Initial Catalog=db_a8c873_pamanobot;User Id=db_a8c873_pamanobot_admin;Password=kNjJMJ6uiSEMkbX")
         {
             Database.SetInitializer(new MigrateDatabaseToLatestVersion<ProductContext, Configuration>());
         }
