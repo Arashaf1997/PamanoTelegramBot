@@ -44,7 +44,12 @@ class Program
                         if (update.Message.LeftChatMember != null)
                         {
                             bot.DeleteMessageAsync(chatId, update.Message.MessageId);
-                            Console.WriteLine($"One message Deleted, {update.Message.Text}");
+                            Console.WriteLine($"One message Deleted, {update.Message.From.Username} Removed {update.Message.LeftChatMember.Username}");
+                        }
+                        else if (update.Message.NewChatMembers != null)
+                        {
+                            bot.DeleteMessageAsync(chatId, update.Message.MessageId);
+                            Console.WriteLine($"One message Deleted, {update.Message.From.Username} Added {update.Message.NewChatMembers.ToString()}");
                         }
                     }
                 }
